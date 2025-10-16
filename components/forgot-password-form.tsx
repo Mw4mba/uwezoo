@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { getAbsoluteUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,11 +32,8 @@ export function ForgotPasswordForm({
     setError(null);
 
     try {
-      // Get the current URL directly for password reset redirect
-      const redirectUrl = typeof window !== 'undefined' 
-        ? `${window.location.origin}/auth/update-password`
-        : '/auth/update-password'; // Fallback to relative URL
-        
+      // Use absolute URL function to ensure correct redirect
+      const redirectUrl = getAbsoluteUrl('/auth/update-password');
       console.log('Password reset redirect URL:', redirectUrl);
       
       // The url which will be included in the email. This URL needs to be configured in your redirect URLs in the Supabase dashboard at https://supabase.com/dashboard/project/_/auth/url-configuration
