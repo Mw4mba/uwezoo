@@ -4,25 +4,26 @@
 Authentication redirects were hardcoded to `localhost:3000` and `window.location.origin`, causing failures in production where users would be redirected to localhost instead of the proper Vercel domain.
 
 ## Solution
-Created a centralized `getBaseUrl()` utility function that properly handles URLs across different environments:
+Created a simple `getBaseUrl()` utility function that leverages Vercel's automatic environment variables and client-side detection:
 
 ### 1. Created getBaseUrl() Utility (`lib/utils.ts`)
 ```typescript
 export function getBaseUrl(): string {
-  // Server-side: use environment variables
-  if (typeof window === 'undefined') {
-    return process.env.NEXT_PUBLIC_SITE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+  // Client-side: use window.location.origin (always correct)
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
   }
   
-  // Client-side: use window.location.origin
-  return window.location.origin;
+  // Server-side: use Vercel's automatic VERCEL_URL or localhost fallback
+  return process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}` 
+    : 'http://localhost:3000';
 }
 ```
 
-### 2. Environment Variables Added
-- Added `NEXT_PUBLIC_SITE_URL` to `.env.example` and `.env.local`
-- This variable should be set to your production domain in Vercel settings
+### 2. No Additional Environment Variables Required
+- Uses Vercel's automatic `VERCEL_URL` environment variable (set automatically on deployment)
+- No manual configuration needed - works out of the box
 
 ### 3. Files Updated
 
@@ -42,24 +43,26 @@ export function getBaseUrl(): string {
 ## Environment Setup Required
 
 ### Development (.env.local)
-```env
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-```
+No additional variables needed - uses localhost automatically.
 
 ### Production (Vercel)
-Set the following environment variable in your Vercel dashboard:
-```env
-NEXT_PUBLIC_SITE_URL=https://your-domain.vercel.app
-```
+No manual setup required - `VERCEL_URL` is set automatically by Vercel.
+
+## How It Works
+
+1. **Client-side**: Uses `window.location.origin` which always returns the correct URL
+2. **Server-side**: Uses Vercel's `VERCEL_URL` environment variable (automatically set to your deployment domain)
+3. **Development**: Falls back to `http://localhost:3000` when no Vercel URL is present
 
 ## Testing
 ✅ Build completed successfully with `npm run build`
 ✅ All TypeScript compilation errors resolved
 ✅ Authentication flow components updated
 ✅ URL generation centralized and consistent
+✅ No additional environment variables required
 
 ## Next Steps
-1. Deploy to Vercel with the `NEXT_PUBLIC_SITE_URL` environment variable set
+1. Deploy to Vercel (no additional configuration needed)
 2. Test authentication flows in production
 3. Verify that redirects point to the correct domain instead of localhost
 
@@ -72,5 +75,3 @@ NEXT_PUBLIC_SITE_URL=https://your-domain.vercel.app
 - `app/protected/employer/create/page.tsx`
 - `components/idea-card.tsx`
 - `app/layout.tsx`
-- `.env.example`
-- `.env.local`
