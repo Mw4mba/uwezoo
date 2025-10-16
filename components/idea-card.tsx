@@ -10,6 +10,7 @@ import { IdeaWithDetails } from "@/lib/types/database"
 import { formatDistanceToNow } from "date-fns"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase/client"
+import { getBaseUrl } from "@/lib/utils"
 
 interface IdeaCardProps {
   idea: IdeaWithDetails
@@ -42,19 +43,20 @@ export function IdeaCard({ idea, currentUserId }: IdeaCardProps) {
   }
 
   const handleShare = async () => {
+    const baseUrl = getBaseUrl()
     if (navigator.share) {
       try {
         await navigator.share({
           title: idea.title,
           text: idea.summary,
-          url: `${window.location.origin}/ideas/${idea.id}`
+          url: `${baseUrl}/ideas/${idea.id}`
         })
       } catch (error) {
         console.error('Error sharing:', error)
       }
     } else {
       // Fallback: copy to clipboard
-      navigator.clipboard.writeText(`${window.location.origin}/ideas/${idea.id}`)
+      navigator.clipboard.writeText(`${baseUrl}/ideas/${idea.id}`)
     }
   }
 

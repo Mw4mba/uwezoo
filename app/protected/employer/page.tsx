@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase/client";
 import { useSearchParams } from "next/navigation";
+import { getBaseUrl } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -140,7 +141,7 @@ export default function EmployerDashboard() {
   }, [user, dataLoaded, loadDashboardData]);
 
   const generateApplicationLink = (jobId: string) => {
-    const baseUrl = window.location.origin;
+    const baseUrl = getBaseUrl();
     return `${baseUrl}/apply/${jobId}`;
   };
 

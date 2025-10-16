@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase/client";
+import { getBaseUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -47,7 +48,7 @@ export function SignUpForm({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/protected`,
+          emailRedirectTo: `${getBaseUrl()}/protected`,
         },
       });
       if (error) throw error;

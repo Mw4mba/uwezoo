@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase/client";
+import { getBaseUrl } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,7 +98,7 @@ export default function CreateJobPage() {
         employer_id: user.id,
         positions_available: Number(formData.positions_available),
         is_active: true,
-        application_link: generateLink ? `${window.location.origin}/apply/` : null
+        application_link: generateLink ? `${getBaseUrl()}/apply/` : null
       };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -114,7 +115,7 @@ export default function CreateJobPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase as any)
           .from('job_openings')
-          .update({ application_link: `${window.location.origin}/apply/${job.id}` })
+          .update({ application_link: `${getBaseUrl()}/apply/${job.id}` })
           .eq('id', job.id);
       }
 
