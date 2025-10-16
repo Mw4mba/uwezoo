@@ -1,0 +1,16 @@
+# Next.js ignore file - Exclude directories from routing and processing
+
+# Exclude legacy app folder from routing
+uwezo.app/**
+
+# Exclude SQL queries from routing  
+queries/**
+
+# Exclude documentation from routing
+*.md
+!README.md
+
+# Exclude other development files
+.vscode/**
+docs/**
+migrations/**
