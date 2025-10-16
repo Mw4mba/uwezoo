@@ -39,11 +39,21 @@ import {
   ArrowLeft,
   Building,
   Plus,
-  Edit,
   MapPin,
   Users,
+  ExternalLink,
+  Settings,
+  Eye,
+  ChevronDown,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -93,6 +103,107 @@ interface Company {
   website?: string;
   logo_url?: string;
   created_at: string;
+}
+
+// Company Card Component with Dropdown
+function CompanyCard({ company, isOnlyCompany }: { company: Company; isOnlyCompany: boolean }) {
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg">{company.name}</CardTitle>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className={cn(
+                      "h-6 w-6 p-0",
+                      isOnlyCompany && "text-muted-foreground/50"
+                    )}
+                    disabled={isOnlyCompany}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link href={`/protected/employer?company=${company.id}`} className="w-full">
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Company Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Public Profile
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <CardDescription className="flex items-center gap-2 mt-1">
+              {company.industry && (
+                <>
+                  <span>{company.industry}</span>
+                  {company.size_range && <span>•</span>}
+                </>
+              )}
+              {company.size_range && (
+                <span className="flex items-center gap-1">
+                  <Users className="h-3 w-3" />
+                  {company.size_range}
+                </span>
+              )}
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {company.description && (
+          <p className="text-sm text-muted-foreground mb-3 overflow-hidden text-ellipsis" style={{
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical'
+          }}>
+            {company.description}
+          </p>
+        )}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            {company.headquarters_location && (
+              <span className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {company.headquarters_location}
+              </span>
+            )}
+            {company.website && (
+              <a 
+                href={company.website} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:underline"
+              >
+                <Globe className="h-3 w-3" />
+                Website
+              </a>
+            )}
+          </div>
+          <Link href={`/protected/employer?company=${company.id}`}>
+            <Button variant="outline" size="sm">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Open Dashboard
+            </Button>
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function ProfilePage() {
@@ -719,58 +830,11 @@ export default function ProfilePage() {
               ) : companies.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2">
                   {companies.map((company) => (
-                    <Card key={company.id}>
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="text-lg">{company.name}</CardTitle>
-                            <CardDescription className="flex items-center gap-2">
-                              {company.industry && (
-                                <>
-                                  <span>{company.industry}</span>
-                                  {company.size_range && <span>•</span>}
-                                </>
-                              )}
-                              {company.size_range && (
-                                <span className="flex items-center gap-1">
-                                  <Users className="h-3 w-3" />
-                                  {company.size_range}
-                                </span>
-                              )}
-                            </CardDescription>
-                          </div>
-                          <Button variant="outline" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        {company.description && (
-                          <p className="text-sm text-muted-foreground mb-3">
-                            {company.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          {company.headquarters_location && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {company.headquarters_location}
-                            </span>
-                          )}
-                          {company.website && (
-                            <a 
-                              href={company.website} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 hover:underline"
-                            >
-                              <Globe className="h-3 w-3" />
-                              Website
-                            </a>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <CompanyCard 
+                      key={company.id} 
+                      company={company} 
+                      isOnlyCompany={companies.length === 1}
+                    />
                   ))}
                 </div>
               ) : (

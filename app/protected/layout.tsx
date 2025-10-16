@@ -3,11 +3,13 @@
 import { createContext, useState, useMemo, useContext, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 import type { TaskWithProgress, UserTaskMetadata } from "@/lib/types/database";
 import { AnimatePresence, motion } from "framer-motion";
 import { AuthButton } from "@/components/auth-button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { RoleSelection } from "@/components/role-selection";
+import { RoleRedirectSkeleton } from "@/components/loading-skeleton";
 import Link from "next/link";
 
 interface DashboardContextType {
@@ -43,7 +45,7 @@ export default function ProtectedLayout({
 
   const supabase = createClient();
 
-  // Check if user has selected a role
+  // Check if user has selected a role and redirect accordingly
   useEffect(() => {
     const checkUserRole = async () => {
       if (!user) return;
@@ -60,9 +62,24 @@ export default function ProtectedLayout({
           return;
         }
 
-        if (profile && profile.role_selected) {
+        if (profile?.role_selected) {
           setUserRole(profile.role);
           setRoleSelected(true);
+          
+          // Auto-redirect to role-specific page if user is on /protected
+          if (typeof window !== 'undefined' && window.location.pathname === '/protected') {
+            switch (profile.role) {
+              case 'employer':
+                window.location.replace('/protected/employer');
+                return;
+              case 'employee':
+                window.location.replace('/protected/employee');
+                return;
+              case 'independent':
+                window.location.replace('/protected/employee'); // Use employee for now
+                return;
+            }
+          }
         } else {
           setRoleSelected(false);
         }
@@ -76,13 +93,24 @@ export default function ProtectedLayout({
     checkUserRole();
   }, [user, supabase]);
 
-  const handleRoleSelected = () => {
+  const handleRoleSelected = async (role: string) => {
     setRoleSelected(true);
-    setCheckingRole(true);
-    // Re-check role after selection
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
+    setUserRole(role);
+    
+    // Navigate to role-specific page without full reload
+    switch (role) {
+      case 'employer':
+        window.location.replace('/protected/employer');
+        break;
+      case 'employee':
+        window.location.replace('/protected/employee');
+        break;
+      case 'independent':
+        window.location.replace('/protected/employee'); // Use employee for now
+        break;
+      default:
+        window.location.replace('/protected');
+    }
   };
 
   const refreshTasks = useCallback(async () => {
@@ -184,11 +212,7 @@ export default function ProtectedLayout({
 
   // Show role selection if user hasn't selected a role yet
   if (checkingRole) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <RoleRedirectSkeleton />;
   }
 
   if (!roleSelected) {

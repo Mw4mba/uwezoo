@@ -1,11 +1,12 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+"use client";
 
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: Promise<{ error: string }>;
-}) {
-  const params = await searchParams;
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+
+function ErrorPageContent() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get('error');
 
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
@@ -18,9 +19,9 @@ export default async function Page({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {params?.error ? (
+              {error ? (
                 <p className="text-sm text-muted-foreground">
-                  Code error: {params.error}
+                  Code error: {error}
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground">
@@ -32,5 +33,13 @@ export default async function Page({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ErrorPageContent />
+    </Suspense>
   );
 }

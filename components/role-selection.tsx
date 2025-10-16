@@ -13,7 +13,7 @@ import { Briefcase, User, Building, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface RoleSelectionProps {
-  onRoleSelected: () => void;
+  onRoleSelected: (role: string) => void;
 }
 
 export function RoleSelection({ onRoleSelected }: RoleSelectionProps) {
@@ -130,7 +130,7 @@ export function RoleSelection({ onRoleSelected }: RoleSelectionProps) {
         if (companyError) throw companyError;
       }
 
-      onRoleSelected();
+      onRoleSelected(selectedRole);
     } catch (error) {
       console.error('Error setting up role:', error);
       setError("Failed to set up your role. Please try again.");

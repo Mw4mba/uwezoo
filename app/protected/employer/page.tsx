@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase/client";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ import {
   Link as LinkIcon
 } from "lucide-react";
 import Link from "next/link";
+import { DashboardLoadingSkeleton } from "@/components/loading-skeleton";
 
 interface JobOpening {
   id: string;
@@ -33,6 +35,10 @@ interface JobOpening {
   _count?: {
     applications: number;
   };
+}
+
+interface JobWithApplications extends JobOpening {
+  job_applications?: { count: number }[];
 }
 
 interface Application {
@@ -52,9 +58,13 @@ interface Application {
 
 export default function EmployerDashboard() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const selectedCompanyId = searchParams.get('company');
+  
   const [jobOpenings, setJobOpenings] = useState<JobOpening[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [stats, setStats] = useState({
     totalJobs: 0,
     activeJobs: 0,
@@ -64,17 +74,12 @@ export default function EmployerDashboard() {
 
   const supabase = createClient();
 
-  useEffect(() => {
-    if (user) {
-      loadDashboardData();
-    }
-  }, [user]);
-
-  const loadDashboardData = async () => {
+  // Memoize the loadDashboardData function to prevent unnecessary re-renders
+  const loadDashboardData = React.useCallback(async () => {
     if (!user) return;
 
     try {
-      // Load job openings
+      // Load job openings with application counts
       const { data: jobs, error: jobsError } = await supabase
         .from('job_openings')
         .select(`
@@ -86,28 +91,32 @@ export default function EmployerDashboard() {
 
       if (jobsError) throw jobsError;
 
-      // Load applications for this employer's jobs
-      const jobIds = jobs?.map((job: any) => job.id) || [];
-      const { data: apps, error: appsError } = await supabase
-        .from('job_applications')
-        .select(`
-          *,
-          user_profiles!job_applications_applicant_id_fkey(first_name, last_name, email),
-          job_openings!job_applications_job_opening_id_fkey(title)
-        `)
-        .in('job_opening_id', jobIds)
-        .order('applied_at', { ascending: false });
+      // Load applications for this employer's jobs only if there are jobs
+      let apps: Application[] = [];
+      if (jobs && jobs.length > 0) {
+        const jobIds = (jobs as JobWithApplications[]).map((job) => job.id);
+        const { data: applications, error: appsError } = await supabase
+          .from('job_applications')
+          .select(`
+            *,
+            user_profiles!job_applications_applicant_id_fkey(first_name, last_name, email),
+            job_openings!job_applications_job_opening_id_fkey(title)
+          `)
+          .in('job_opening_id', jobIds)
+          .order('applied_at', { ascending: false });
 
-      if (appsError) throw appsError;
+        if (appsError) throw appsError;
+        apps = (applications as Application[]) || [];
+      }
 
-      setJobOpenings(jobs || []);
-      setApplications(apps || []);
+      setJobOpenings((jobs as JobOpening[]) || []);
+      setApplications(apps);
 
       // Calculate stats
       const totalJobs = jobs?.length || 0;
-      const activeJobs = jobs?.filter((job: any) => job.is_active).length || 0;
-      const totalApplications = apps?.length || 0;
-      const pendingApplications = apps?.filter((app: any) => app.status === 'pending').length || 0;
+      const activeJobs = (jobs as JobOpening[])?.filter((job) => job.is_active).length || 0;
+      const totalApplications = apps.length;
+      const pendingApplications = apps.filter((app) => app.status === 'pending').length;
 
       setStats({
         totalJobs,
@@ -116,12 +125,19 @@ export default function EmployerDashboard() {
         pendingApplications
       });
 
+      setDataLoaded(true);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, supabase]);
+
+  useEffect(() => {
+    if (user && !dataLoaded) {
+      loadDashboardData();
+    }
+  }, [user, dataLoaded, loadDashboardData]);
 
   const generateApplicationLink = (jobId: string) => {
     const baseUrl = window.location.origin;
@@ -135,27 +151,21 @@ export default function EmployerDashboard() {
   };
 
   if (loading) {
-    return (
-      <div className="space-y-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-muted rounded w-1/2 mb-4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 bg-muted rounded"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <DashboardLoadingSkeleton />;
   }
 
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight">Employer Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Employer Dashboard</h1>
           <p className="text-muted-foreground">
-            Manage your job postings and track applications
+            Manage your job postings and review applications
+            {selectedCompanyId && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                Company-specific view
+              </span>
+            )}
           </p>
         </div>
         <Link href="/protected/employer/create-job">
