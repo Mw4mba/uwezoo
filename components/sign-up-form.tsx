@@ -3,7 +3,6 @@
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase/client";
-import { getBaseUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -44,11 +43,18 @@ export function SignUpForm({
     }
 
     try {
+      // Get the current URL directly for email redirect
+      const redirectUrl = typeof window !== 'undefined' 
+        ? `${window.location.origin}/protected`
+        : '/protected'; // Fallback to relative URL
+        
+      console.log('Email redirect URL:', redirectUrl);
+      
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${getBaseUrl()}/protected`,
+          emailRedirectTo: redirectUrl,
         },
       });
       if (error) throw error;

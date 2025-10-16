@@ -17,11 +17,15 @@ export const hasEnvVars =
 export function getBaseUrl(): string {
   // Client-side: use window.location.origin (always correct)
   if (typeof window !== 'undefined') {
-    return window.location.origin;
+    const url = window.location.origin;
+    console.log('getBaseUrl (client-side):', url);
+    return url;
   }
   
   // Server-side: use Vercel's automatic VERCEL_URL or localhost fallback
-  return process.env.VERCEL_URL 
+  const url = process.env.VERCEL_URL 
     ? `https://${process.env.VERCEL_URL}` 
     : 'http://localhost:3000';
+  console.log('getBaseUrl (server-side):', url);
+  return url;
 }

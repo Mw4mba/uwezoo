@@ -3,7 +3,6 @@
 import { useState, useEffect, useContext, createContext } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase/client"
-import { getBaseUrl } from "@/lib/utils"
 import type { User, Session } from "@supabase/supabase-js"
 
 interface AuthContextType {
@@ -66,10 +65,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
+      // Get the current URL directly from window.location for OAuth redirect
+      const redirectUrl = typeof window !== 'undefined' 
+        ? `${window.location.origin}/protected`
+        : '/protected'; // Fallback to relative URL
+        
+      console.log('OAuth redirect URL:', redirectUrl);
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${getBaseUrl()}/protected`,
+          redirectTo: redirectUrl,
         },
       })
       
