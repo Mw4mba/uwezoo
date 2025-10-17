@@ -14,40 +14,28 @@ export const hasEnvVars =
  * Get the absolute base URL for the application
  * Always returns an absolute URL with protocol and domain
  */
-export function getAbsoluteUrl(path: string = ''): string {
-  // Client-side: always use window.location.origin (most reliable)
+export function getAbsoluteUrl(path?: string): string {
+  console.log('🔗 URL Utils: Getting absolute URL for path:', path);
+  const urlStart = performance.now();
+  
+  // Check if we're on the client side
   if (typeof window !== 'undefined') {
-    const baseUrl = window.location.origin;
-    console.log('getAbsoluteUrl (client-side):', `${baseUrl}${path}`);
-    return `${baseUrl}${path}`;
+    const clientUrl = new URL(path || '', window.location.origin).toString();
+    const clientTime = performance.now();
+    console.log(`⏱️ URL Utils: Client URL generation took ${(clientTime - urlStart).toFixed(2)}ms`);
+    console.log('🌐 URL Utils: Client URL result:', clientUrl);
+    return clientUrl;
   }
+
+  // Server-side URL generation
+  const baseUrl = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}` 
+    : process.env.NEXT_PUBLIC_SITE_URL || 'https://uwezoo.vercel.app';
   
-  // Server-side: try multiple approaches to get the correct URL
-  let baseUrl: string;
+  const serverUrl = new URL(path || '', baseUrl).toString();
+  const serverTime = performance.now();
+  console.log(`⏱️ URL Utils: Server URL generation took ${(serverTime - urlStart).toFixed(2)}ms`);
+  console.log('🌐 URL Utils: Server URL result:', serverUrl);
   
-  // 1. Check for VERCEL_URL (automatically set by Vercel)
-  if (process.env.VERCEL_URL) {
-    baseUrl = `https://${process.env.VERCEL_URL}`;
-  } 
-  // 2. Check for manually set production URL
-  else if (process.env.NEXT_PUBLIC_SITE_URL) {
-    baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  }
-  // 3. Production fallback - hardcode your actual domain here
-  else if (process.env.NODE_ENV === 'production') {
-    // Your actual Vercel domain
-    baseUrl = 'https://uwezoo.vercel.app';
-  } 
-  // 4. Development fallback
-  else {
-    baseUrl = 'http://localhost:3000';
-  }
-  
-  console.log('getAbsoluteUrl (server-side):', `${baseUrl}${path}`, {
-    VERCEL_URL: process.env.VERCEL_URL,
-    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
-    NODE_ENV: process.env.NODE_ENV
-  });
-  
-  return `${baseUrl}${path}`;
+  return serverUrl;
 }

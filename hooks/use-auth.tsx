@@ -31,8 +31,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter()
 
   useEffect(() => {
+    console.log('🔄 Auth Effect: Starting session check...');
+    const startTime = performance.now();
+    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      const sessionTime = performance.now();
+      console.log(`⏱️ Auth: Initial session check took ${(sessionTime - startTime).toFixed(2)}ms`);
+      console.log('📝 Auth: Session data:', session ? 'User found' : 'No user');
+      
       setSession(session)
       setUser(session?.user ?? null)
       setIsLoading(false)
@@ -42,22 +49,66 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const authChangeStart = performance.now();
+      console.log(`🔔 Auth State Change: ${event}`, session ? 'with user' : 'without user');
+      
       setSession(session)
       setUser(session?.user ?? null)
       setIsLoading(false)
 
       if (event === 'SIGNED_IN' && session?.user) {
-        // Check if profile exists, create if not
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
+        console.log('✅ Auth: User signed in, checking profile...');
+        const profileCheckStart = performance.now();
+        
+        // Check if profile exists, create if not with error handling
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
 
-        if (!profile) {
-          // Profile will be created automatically by the database trigger
-          console.log('Profile will be created by trigger')
+          const profileCheckTime = performance.now();
+          console.log(`⏱️ Auth: Profile check took ${(profileCheckTime - profileCheckStart).toFixed(2)}ms`);
+
+          if (profileError && profileError.code !== 'PGRST116') {
+            console.error('❌ Auth: Error checking user profile:', profileError);
+          }
+
+          if (!profile) {
+            console.log('⚠️ Auth: No profile found, creating...');
+            const profileCreateStart = performance.now();
+            
+            // Try to create profile manually if trigger failed
+            const { error: insertError } = await supabase
+              .from('user_profiles')
+              .insert({
+                user_id: session.user.id,
+                email: session.user.email,
+                first_name: session.user.user_metadata?.first_name || '',
+                last_name: session.user.user_metadata?.last_name || '',
+                display_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
+                avatar_url: session.user.user_metadata?.avatar_url || '',
+              });
+
+            const profileCreateTime = performance.now();
+            console.log(`⏱️ Auth: Profile creation took ${(profileCreateTime - profileCreateStart).toFixed(2)}ms`);
+
+            if (insertError) {
+              console.error('❌ Auth: Error creating user profile:', insertError);
+            } else {
+              console.log('✅ Auth: User profile created successfully');
+            }
+          } else {
+            console.log('✅ Auth: Profile found:', profile.role || 'no role set');
+          }
+        } catch (error) {
+          console.error('❌ Auth: Error in profile creation process:', error);
+          // Don't block login if profile creation fails
         }
+        
+        const totalAuthTime = performance.now();
+        console.log(`⏱️ Auth: Total auth state change took ${(totalAuthTime - authChangeStart).toFixed(2)}ms`);
       }
     })
 

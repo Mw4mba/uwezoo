@@ -15,6 +15,7 @@ import { VideoIntroduction } from "@/components/video-introduction";
 import { ContractViewer } from "@/components/contract-viewer";
 import { NdaViewer } from "@/components/nda-viewer";
 import { BuddyChat } from "@/components/buddy-chat";
+import { FastLoadingSkeleton } from "@/components/fast-loading-skeleton";
 
 const TaskIcon = ({ type }: { type: string }) => {
   switch (type) {
@@ -36,14 +37,7 @@ export default function ProtectedPage() {
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
 
   if (loading) {
-    return (
-      <div className="space-y-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-muted rounded w-1/2 mb-4"></div>
-          <div className="h-4 bg-muted rounded w-full"></div>
-        </div>
-      </div>
-    );
+    return <FastLoadingSkeleton />;
   }
 
   // Redirect employers to their dashboard

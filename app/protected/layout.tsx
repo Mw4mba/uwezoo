@@ -34,64 +34,94 @@ export function useDashboard() {
 export default function ProtectedLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
-  const { user } = useAuth();
-  const [tasks, setTasks] = useState<TaskWithProgress[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [roleSelected, setRoleSelected] = useState<boolean>(false);
-  const [checkingRole, setCheckingRole] = useState(true);
-
+  console.log('🏗️ ProtectedLayout: Component rendering...');
+  const layoutStartTime = performance.now();
+  
+  const { user, isLoading } = useAuth()
+  const router = useRouter()
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [isNavExpanded, setIsNavExpanded] = useState(false)
+  const [tasks, setTasks] = useState<TaskWithProgress[]>([])
+  const [loading, setLoading] = useState(false)
+  const [roleSelected, setRoleSelected] = useState(false)
+  const [checkingRole, setCheckingRole] = useState(true)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const supabase = createClient();
 
   // Check if user has selected a role and redirect accordingly
   useEffect(() => {
+    console.log('🎭 ProtectedLayout: Role check starting...');
+    const roleCheckStart = performance.now();
+    
     const checkUserRole = async () => {
-      if (!user) return;
+      if (!user) {
+        console.log('👤 ProtectedLayout: No user for role check');
+        return;
+      }
 
+      console.log('🔍 ProtectedLayout: Checking user role...');
+      const dbQueryStart = performance.now();
+
+      // Use a more efficient query with minimal data
       try {
         const { data: profile, error } = await supabase
           .from('user_profiles')
           .select('role, role_selected')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle(); // Use maybeSingle instead of single to avoid errors
 
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error checking user role:', error);
+        const dbQueryTime = performance.now();
+        console.log(`⏱️ ProtectedLayout: Role query took ${(dbQueryTime - dbQueryStart).toFixed(2)}ms`);
+
+        if (error) {
+          console.error('❌ ProtectedLayout: Error checking user role:', error);
+          setCheckingRole(false);
           return;
         }
 
+        console.log('📊 ProtectedLayout: Profile data:', profile);
+
         if (profile?.role_selected) {
+          console.log(`✅ ProtectedLayout: Role selected: ${profile.role}`);
           setUserRole(profile.role);
           setRoleSelected(true);
           
-          // Auto-redirect to role-specific page if user is on /protected
+          // Use Next.js router instead of window.location for better performance
           if (typeof window !== 'undefined' && window.location.pathname === '/protected') {
-            switch (profile.role) {
-              case 'employer':
-                window.location.replace('/protected/employer');
-                return;
-              case 'employee':
-                window.location.replace('/protected/employee');
-                return;
-              case 'independent':
-                window.location.replace('/protected/employee'); // Use employee for now
-                return;
-            }
+            const targetPath = profile.role === 'employer' 
+              ? '/protected/employer' 
+              : '/protected/employee';
+            
+            console.log(`🔀 ProtectedLayout: Redirecting to ${targetPath}`);
+            const redirectStart = performance.now();
+            
+            // Use replace to avoid adding to history
+            router.replace(targetPath);
+            
+            const redirectTime = performance.now();
+            console.log(`⏱️ ProtectedLayout: Router redirect took ${(redirectTime - redirectStart).toFixed(2)}ms`);
+            return;
           }
         } else {
+          console.log('⚠️ ProtectedLayout: Role not selected yet');
           setRoleSelected(false);
         }
       } catch (error) {
-        console.error('Error checking user role:', error);
+        console.error('❌ ProtectedLayout: Error checking user role:', error);
       } finally {
         setCheckingRole(false);
+        const totalRoleTime = performance.now();
+        console.log(`⏱️ ProtectedLayout: Total role check took ${(totalRoleTime - roleCheckStart).toFixed(2)}ms`);
       }
     };
 
-    checkUserRole();
-  }, [user, supabase]);
+    // Add a small delay to prevent rapid consecutive calls
+    const timeoutId = setTimeout(checkUserRole, 100);
+    return () => clearTimeout(timeoutId);
+  }, [user, router]);
 
   const handleRoleSelected = async (role: string) => {
     setRoleSelected(true);
@@ -114,10 +144,39 @@ export default function ProtectedLayout({
   };
 
   const refreshTasks = useCallback(async () => {
-    if (!user) return;
+    console.log('📋 ProtectedLayout: Task refresh starting...');
+    const taskRefreshStart = performance.now();
+    
+    if (!user) {
+      console.log('👤 ProtectedLayout: No user for task refresh');
+      return;
+    }
     
     setLoading(true);
     try {
+      console.log('💾 ProtectedLayout: Checking task cache...');
+      const cacheCheckStart = performance.now();
+      
+      // Check cache first to improve performance
+      const cacheKey = `tasks_${user.id}`;
+      const cachedTasks = localStorage.getItem(cacheKey);
+      const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
+      const now = Date.now();
+      const cacheExpiry = 5 * 60 * 1000; // 5 minutes cache
+      
+      // Use cached data if it's still fresh
+      if (cachedTasks && cacheTimestamp && (now - parseInt(cacheTimestamp)) < cacheExpiry) {
+        console.log('✅ ProtectedLayout: Using cached tasks');
+        setTasks(JSON.parse(cachedTasks));
+        setLoading(false);
+        const cacheTime = performance.now();
+        console.log(`⏱️ ProtectedLayout: Cache task load took ${(cacheTime - cacheCheckStart).toFixed(2)}ms`);
+        return;
+      }
+
+      console.log('🔄 ProtectedLayout: Loading default tasks...');
+      const defaultTasksStart = performance.now();
+
       // Default tasks for when database isn't set up yet
       const defaultTasks: TaskWithProgress[] = [
         { id: 1, title: "Review and Sign NDA", description: "Review and sign the Non-Disclosure Agreement", task_type: "nda", is_required: true, order_index: 1, created_at: new Date().toISOString(), completed: false },
@@ -129,29 +188,30 @@ export default function ProtectedLayout({
         { id: 7, title: "Meet your onboarding buddy", description: "Connect with your assigned onboarding buddy", task_type: "chat", is_required: true, order_index: 7, created_at: new Date().toISOString(), completed: false },
       ];
 
-      // TODO: Replace with actual Supabase calls when database is set up
-      // For now, use localStorage to persist task completion
-      const savedTasks = localStorage.getItem(`tasks_${user.id}`);
-      if (savedTasks) {
-        const parsedTasks = JSON.parse(savedTasks);
-        setTasks(parsedTasks);
-      } else {
-        setTasks(defaultTasks);
-      }
+      // Load from localStorage with fallback to defaults
+      const savedTasks = localStorage.getItem(cacheKey);
+      const tasksToSet = savedTasks ? JSON.parse(savedTasks) : defaultTasks;
+      
+      setTasks(tasksToSet);
+      
+      // Update cache
+      localStorage.setItem(cacheKey, JSON.stringify(tasksToSet));
+      localStorage.setItem(`${cacheKey}_timestamp`, now.toString());
+      
+      const defaultTasksTime = performance.now();
+      console.log(`⏱️ ProtectedLayout: Default tasks setup took ${(defaultTasksTime - defaultTasksStart).toFixed(2)}ms`);
+      
     } catch (error) {
-      console.error('Error loading tasks:', error);
-      const fallbackTasks: TaskWithProgress[] = [
+      console.error('❌ ProtectedLayout: Error loading tasks:', error);
+      // Minimal fallback for errors
+      setTasks([
         { id: 1, title: "Review and Sign NDA", description: "Review and sign the Non-Disclosure Agreement", task_type: "nda", is_required: true, order_index: 1, created_at: new Date().toISOString(), completed: false },
-        { id: 2, title: "Sign Employment Contract", description: "Review and sign your employment contract", task_type: "contract", is_required: true, order_index: 2, created_at: new Date().toISOString(), completed: false },
-        { id: 3, title: "Upload CV for Skill Analysis", description: "Upload your CV for AI-powered skill analysis", task_type: "cv_analysis", is_required: true, order_index: 3, created_at: new Date().toISOString(), completed: false },
-        { id: 4, title: "Complete Profile Information", description: "Fill in your complete profile information", task_type: "form", is_required: true, order_index: 4, created_at: new Date().toISOString(), completed: false },
-        { id: 5, title: "Take the Aptitude Quiz", description: "Complete the aptitude assessment quiz", task_type: "quiz", is_required: true, order_index: 5, created_at: new Date().toISOString(), completed: false },
-        { id: 6, title: "Record a Video Introduction", description: "Record a brief video introduction", task_type: "video_intro", is_required: true, order_index: 6, created_at: new Date().toISOString(), completed: false },
-        { id: 7, title: "Meet your onboarding buddy", description: "Connect with your assigned onboarding buddy", task_type: "chat", is_required: true, order_index: 7, created_at: new Date().toISOString(), completed: false },
-      ];
-      setTasks(fallbackTasks);
+        { id: 2, title: "Complete Profile Information", description: "Fill in your complete profile information", task_type: "form", is_required: true, order_index: 2, created_at: new Date().toISOString(), completed: false },
+      ]);
     } finally {
       setLoading(false);
+      const totalTaskTime = performance.now();
+      console.log(`⏱️ ProtectedLayout: Total task refresh took ${(totalTaskTime - taskRefreshStart).toFixed(2)}ms`);
     }
   }, [user]);
 
@@ -212,13 +272,16 @@ export default function ProtectedLayout({
 
   // Show role selection if user hasn't selected a role yet
   if (checkingRole) {
+    console.log('🔄 ProtectedLayout: Showing role redirect skeleton...');
     return <RoleRedirectSkeleton />;
   }
 
   if (!roleSelected) {
+    console.log('🎭 ProtectedLayout: Showing role selection...');
     return <RoleSelection onRoleSelected={handleRoleSelected} />;
   }
 
+  console.log('✅ ProtectedLayout: Rendering main layout...');
   return (
     <DashboardContext.Provider value={value}>
       <main className="min-h-screen flex flex-col items-center bg-background text-foreground">
