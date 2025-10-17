@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase/client";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { getAbsoluteUrl } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,7 @@ interface Application {
 
 export default function EmployerDashboard() {
   const { user } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const selectedCompanyId = searchParams.get('company');
   
@@ -74,6 +75,41 @@ export default function EmployerDashboard() {
   });
 
   const supabase = createClient();
+
+  // Check if user has the employer role
+  useEffect(() => {
+    const checkUserRole = async () => {
+      if (!user) return;
+
+      try {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('role, role_selected')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        // Redirect to role selection if role is not set or not selected
+        if (!profile || !profile.role_selected || !profile.role) {
+          console.log('⚠️ Employer Page: No role selected, redirecting to role selection');
+          router.replace('/protected');
+          return;
+        }
+
+        // If user has employee role, redirect to employee dashboard
+        if (profile.role === 'employee' || profile.role === 'independent') {
+          console.log('🔀 Employer Page: User is employee, redirecting to employee dashboard');
+          router.replace('/protected/employee');
+          return;
+        }
+
+        console.log('✅ Employer Page: User verified as employer');
+      } catch (error) {
+        console.error('❌ Employer Page: Error checking user role:', error);
+      }
+    };
+
+    checkUserRole();
+  }, [user, router]);
 
   // Memoize the loadDashboardData function to prevent unnecessary re-renders
   const loadDashboardData = React.useCallback(async () => {

@@ -84,7 +84,8 @@ export default function ProtectedLayout({
 
         console.log('📊 ProtectedLayout: Profile data:', profile);
 
-        if (profile?.role_selected) {
+        // Check if role is selected AND has a valid role value
+        if (profile?.role_selected && profile?.role) {
           console.log(`✅ ProtectedLayout: Role selected: ${profile.role}`);
           setUserRole(profile.role);
           setRoleSelected(true);
@@ -106,8 +107,19 @@ export default function ProtectedLayout({
             return;
           }
         } else {
-          console.log('⚠️ ProtectedLayout: Role not selected yet');
+          // Role not selected or role is undefined - redirect to role selection
+          console.log('⚠️ ProtectedLayout: Role not selected or undefined, showing role selection');
           setRoleSelected(false);
+          setUserRole(null);
+          
+          // If user is on a role-specific page without a role, redirect to /protected
+          if (typeof window !== 'undefined' && 
+              (window.location.pathname.startsWith('/protected/employee') || 
+               window.location.pathname.startsWith('/protected/employer') ||
+               window.location.pathname.startsWith('/protected/profile'))) {
+            console.log('🔀 ProtectedLayout: Redirecting to role selection from role-specific page');
+            router.replace('/protected');
+          }
         }
       } catch (error) {
         console.error('❌ ProtectedLayout: Error checking user role:', error);
