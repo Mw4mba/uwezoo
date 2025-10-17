@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/use-auth";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const defaultUrl = process.env.NEXT_PUBLIC_SITE_URL || 
@@ -36,6 +37,7 @@ export default function RootLayout({
           <AuthProvider>
             {children}
           </AuthProvider>
+          <Toaster position="top-center" richColors />
         </ThemeProvider>
       </body>
     </html>

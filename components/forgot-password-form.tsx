@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export function ForgotPasswordForm({
   className,
@@ -41,9 +42,13 @@ export function ForgotPasswordForm({
         redirectTo: redirectUrl,
       });
       if (error) throw error;
+      
       setSuccess(true);
+      toast.success("Password reset email sent! Check your inbox.");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

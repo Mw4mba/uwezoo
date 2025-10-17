@@ -2,6 +2,7 @@
 
 import { createContext, useState, useMemo, useContext, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useRole, RoleProvider } from "@/hooks/use-role";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import type { TaskWithProgress, UserTaskMetadata } from "@/lib/types/database";
@@ -36,111 +37,28 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode
 }) {
+  return (
+    <RoleProvider>
+      <ProtectedLayoutInner>{children}</ProtectedLayoutInner>
+    </RoleProvider>
+  );
+}
+
+function ProtectedLayoutInner({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   console.log('🏗️ ProtectedLayout: Component rendering...');
-  const layoutStartTime = performance.now();
   
-  const { user, isLoading } = useAuth()
-  const router = useRouter()
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [profileLoading, setProfileLoading] = useState(true)
-  const [isNavExpanded, setIsNavExpanded] = useState(false)
+  const { user } = useAuth()
+  const { role, roleSelected, checkingRole } = useRole()
   const [tasks, setTasks] = useState<TaskWithProgress[]>([])
   const [loading, setLoading] = useState(false)
-  const [roleSelected, setRoleSelected] = useState(false)
-  const [checkingRole, setCheckingRole] = useState(true)
-  const [userRole, setUserRole] = useState<string | null>(null)
-  const supabase = createClient();
 
-  // Check if user has selected a role and redirect accordingly
-  useEffect(() => {
-    console.log('🎭 ProtectedLayout: Role check starting...');
-    const roleCheckStart = performance.now();
-    
-    const checkUserRole = async () => {
-      if (!user) {
-        console.log('👤 ProtectedLayout: No user for role check');
-        return;
-      }
-
-      console.log('🔍 ProtectedLayout: Checking user role...');
-      const dbQueryStart = performance.now();
-
-      // Use a more efficient query with minimal data
-      try {
-        const { data: profile, error } = await supabase
-          .from('user_profiles')
-          .select('role, role_selected')
-          .eq('user_id', user.id)
-          .maybeSingle(); // Use maybeSingle instead of single to avoid errors
-
-        const dbQueryTime = performance.now();
-        console.log(`⏱️ ProtectedLayout: Role query took ${(dbQueryTime - dbQueryStart).toFixed(2)}ms`);
-
-        if (error) {
-          console.error('❌ ProtectedLayout: Error checking user role:', error);
-          setCheckingRole(false);
-          return;
-        }
-
-        console.log('📊 ProtectedLayout: Profile data:', profile);
-
-        // Check if role is selected AND has a valid role value
-        if (profile?.role_selected && profile?.role) {
-          console.log(`✅ ProtectedLayout: Role selected: ${profile.role}`);
-          setUserRole(profile.role);
-          setRoleSelected(true);
-          
-          // Use Next.js router instead of window.location for better performance
-          if (typeof window !== 'undefined' && window.location.pathname === '/protected') {
-            const targetPath = profile.role === 'employer' 
-              ? '/protected/employer' 
-              : '/protected/employee';
-            
-            console.log(`🔀 ProtectedLayout: Redirecting to ${targetPath}`);
-            const redirectStart = performance.now();
-            
-            // Use replace to avoid adding to history
-            router.replace(targetPath);
-            
-            const redirectTime = performance.now();
-            console.log(`⏱️ ProtectedLayout: Router redirect took ${(redirectTime - redirectStart).toFixed(2)}ms`);
-            return;
-          }
-        } else {
-          // Role not selected or role is undefined - redirect to role selection
-          console.log('⚠️ ProtectedLayout: Role not selected or undefined, showing role selection');
-          setRoleSelected(false);
-          setUserRole(null);
-          
-          // If user is on a role-specific page without a role, redirect to /protected
-          if (typeof window !== 'undefined' && 
-              (window.location.pathname.startsWith('/protected/employee') || 
-               window.location.pathname.startsWith('/protected/employer') ||
-               window.location.pathname.startsWith('/protected/profile'))) {
-            console.log('🔀 ProtectedLayout: Redirecting to role selection from role-specific page');
-            router.replace('/protected');
-          }
-        }
-      } catch (error) {
-        console.error('❌ ProtectedLayout: Error checking user role:', error);
-      } finally {
-        setCheckingRole(false);
-        const totalRoleTime = performance.now();
-        console.log(`⏱️ ProtectedLayout: Total role check took ${(totalRoleTime - roleCheckStart).toFixed(2)}ms`);
-      }
-    };
-
-    // Add a small delay to prevent rapid consecutive calls
-    const timeoutId = setTimeout(checkUserRole, 100);
-    return () => clearTimeout(timeoutId);
-  }, [user, router]);
-
-  const handleRoleSelected = async (role: string) => {
-    setRoleSelected(true);
-    setUserRole(role);
-    
-    // Navigate to role-specific page without full reload
-    switch (role) {
+  const handleRoleSelected = async (selectedRole: string) => {
+    // Navigate to role-specific page
+    switch (selectedRole) {
       case 'employer':
         window.location.replace('/protected/employer');
         break;
@@ -279,7 +197,7 @@ export default function ProtectedLayout({
     progressPercentage,
     loading,
     refreshTasks,
-    userRole,
+    userRole: role, // Use role from context
   };
 
   // Show role selection if user hasn't selected a role yet

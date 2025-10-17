@@ -6,6 +6,7 @@ import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
+import { useRole } from "@/hooks/use-role";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -209,6 +210,7 @@ function CompanyCard({ company, isOnlyCompany }: { company: Company; isOnlyCompa
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const { role } = useRole();
   const router = useRouter();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -220,30 +222,7 @@ export default function ProfilePage() {
 
   const supabase = createClient();
 
-  // Check if user has selected a role
-  useEffect(() => {
-    const checkUserRole = async () => {
-      if (!user) return;
-
-      try {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('role, role_selected')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        // Redirect to role selection if role is not set or not selected
-        if (!profile || !profile.role_selected || !profile.role) {
-          console.log('⚠️ Profile Page: No role selected, redirecting to role selection');
-          router.replace('/protected');
-        }
-      } catch (error) {
-        console.error('❌ Profile Page: Error checking user role:', error);
-      }
-    };
-
-    checkUserRole();
-  }, [user, router]);
+  // Role verification is now handled by useRole hook - no need for local checks
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),

@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 export function LoginForm({
   className,
@@ -41,10 +42,14 @@ export function LoginForm({
         password,
       });
       if (error) throw error;
+      
+      toast.success("Logged in successfully!");
       // Update this route to redirect to an authenticated route. The user already has an active session.
       router.push("/protected");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -56,8 +61,11 @@ export function LoginForm({
 
     try {
       await signInWithGoogle();
+      toast.success("Redirecting to Google...");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsGoogleLoading(false);
     }

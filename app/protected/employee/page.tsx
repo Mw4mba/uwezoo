@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useRole } from "@/hooks/use-role";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,6 +59,7 @@ interface AvailableJob {
 
 export default function EmployeeDashboard() {
   const { user } = useAuth();
+  const { role } = useRole();
   const router = useRouter();
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [availableJobs, setAvailableJobs] = useState<AvailableJob[]>([]);
@@ -65,40 +67,7 @@ export default function EmployeeDashboard() {
 
   const supabase = createClient();
 
-  // Check if user has the employee role
-  useEffect(() => {
-    const checkUserRole = async () => {
-      if (!user) return;
-
-      try {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('role, role_selected')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        // Redirect to role selection if role is not set or not selected
-        if (!profile || !profile.role_selected || !profile.role) {
-          console.log('⚠️ Employee Page: No role selected, redirecting to role selection');
-          router.replace('/protected');
-          return;
-        }
-
-        // If user has employer role, redirect to employer dashboard
-        if (profile.role === 'employer') {
-          console.log('🔀 Employee Page: User is employer, redirecting to employer dashboard');
-          router.replace('/protected/employer');
-          return;
-        }
-
-        console.log('✅ Employee Page: User verified as employee');
-      } catch (error) {
-        console.error('❌ Employee Page: Error checking user role:', error);
-      }
-    };
-
-    checkUserRole();
-  }, [user, router]);
+  // Role verification is now handled by useRole hook - no need for local checks
 
   useEffect(() => {
     if (user) {
